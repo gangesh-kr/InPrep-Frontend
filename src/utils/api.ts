@@ -1,9 +1,10 @@
-import { useAuthStore } from '../store/authStore';
+import { store } from '../store';
+import { logout } from '../store/authSlice';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 export const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
-  const token = useAuthStore.getState().token;
+  const token = store.getState().auth.token;
   
   const headers = new Headers(options.headers);
   if (token) {
@@ -22,7 +23,7 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}) =>
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     if (response.status === 401) {
-      useAuthStore.getState().logout();
+      store.dispatch(logout());
     }
     throw new Error(errorData.error || 'Something went wrong');
   }

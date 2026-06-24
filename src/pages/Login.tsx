@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useAuthStore } from '../store/authStore';
+import { useAppDispatch } from '../store';
+import { login } from '../store/authSlice';
 import { apiRequest } from '../utils/api';
 import { BookOpen, Lock, Mail, User } from 'lucide-react';
 
@@ -11,7 +12,7 @@ export const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const loginStore = useAuthStore((state) => state.login);
+  const dispatch = useAppDispatch();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,13 +25,13 @@ export const Login: React.FC = () => {
           method: 'POST',
           body: JSON.stringify({ email, password }),
         });
-        loginStore(data.user, data.token);
+        dispatch(login({ user: data.user, token: data.token }));
       } else {
         const data = await apiRequest('/auth/register', {
           method: 'POST',
           body: JSON.stringify({ email, password, fullName }),
         });
-        loginStore(data.user, data.token);
+        dispatch(login({ user: data.user, token: data.token }));
       }
     } catch (err: any) {
       setError(err.message || 'Authentication failed');

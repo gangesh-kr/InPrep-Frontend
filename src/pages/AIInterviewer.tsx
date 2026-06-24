@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { apiRequest } from '../utils/api';
-import { useAuthStore } from '../store/authStore';
+import { useAppDispatch, useAppSelector } from '../store';
+import { setUser as setUserAction } from '../store/authSlice';
 import { 
   Mic, 
   MicOff, 
@@ -93,7 +94,9 @@ Strong communication, testing habits, and active problem-solving skills are crit
 };
 
 export const AIInterviewer: React.FC = () => {
-  const { user, setUser } = useAuthStore();
+  const user = useAppSelector((state) => state.auth.user);
+  const dispatch = useAppDispatch();
+  const setUser = (u: any) => dispatch(setUserAction(u));
   
   // Navigation tabs within AI page: 'setup' | 'interview' | 'evaluation' | 'history' | 'view_report'
   const [activeScreen, setActiveScreen] = useState<'setup' | 'interview' | 'evaluation' | 'history' | 'view_report'>('setup');

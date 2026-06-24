@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useAuthStore } from './store/authStore';
+import { useAppDispatch, useAppSelector } from './store';
+import { logout } from './store/authSlice';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Applications } from './pages/Applications';
@@ -23,7 +24,9 @@ import {
 } from 'lucide-react';
 
 const App: React.FC = () => {
-  const { isAuthenticated, user, logout } = useAuthStore();
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const user = useAppSelector((state) => state.auth.user);
+  const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -138,7 +141,7 @@ const App: React.FC = () => {
           </div>
 
           <button
-            onClick={() => logout()}
+            onClick={() => dispatch(logout())}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 hover:bg-slate-50 rounded-md text-xs font-semibold text-slate-600 transition"
           >
             <LogOut className="w-3.5 h-3.5" />

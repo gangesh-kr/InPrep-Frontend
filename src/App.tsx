@@ -9,6 +9,12 @@ import { Revision } from './pages/Revision';
 import { Learning } from './pages/Learning';
 import { Journal } from './pages/Journal';
 import { AIInterviewer } from './pages/AIInterviewer';
+import { InterviewHistory } from './pages/InterviewHistory';
+import { Analytics } from './pages/Analytics';
+import { WeaknessAnalysis } from './pages/WeaknessAnalysis';
+import { CompanyPacks } from './pages/CompanyPacks';
+import { LearningPlan } from './pages/LearningPlan';
+import { ScorecardDetail } from './pages/ScorecardDetail';
 import { 
   LayoutDashboard, 
   Briefcase, 
@@ -20,7 +26,12 @@ import {
   User as UserIcon,
   Menu,
   X,
-  Mic
+  Mic,
+  Clock,
+  TrendingUp,
+  AlertTriangle,
+  Layers,
+  Compass
 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -29,15 +40,28 @@ const App: React.FC = () => {
   const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [selectedScorecardSessionId, setSelectedScorecardSessionId] = useState<string | null>(null);
 
-  if (!isAuthenticated) {
+  const isPublicScorecardRoute = window.location.pathname.startsWith('/scorecard/');
+
+  if (!isAuthenticated && !isPublicScorecardRoute) {
     return <Login />;
+  }
+
+  if (isPublicScorecardRoute) {
+    const publicToken = window.location.pathname.split('/scorecard/')[1];
+    return <ScorecardDetail publicToken={publicToken} isPublicView={true} />;
   }
 
   const navItems = [
     { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
     { id: 'applications', label: 'Applications', icon: Briefcase },
     { id: 'ai-interviewer', label: 'AI Mock Interview', icon: Mic },
+    { id: 'history', label: 'Interview History', icon: Clock },
+    { id: 'analytics', label: 'Improvement Trends', icon: TrendingUp },
+    { id: 'weaknesses', label: 'Weak Topics', icon: AlertTriangle },
+    { id: 'company-packs', label: 'Company Packs', icon: Layers },
+    { id: 'learning-plan', label: 'Study Plan', icon: Compass },
     { id: 'questions', label: 'Question Bank', icon: Database },
     { id: 'revision', label: 'Revision Center', icon: BookOpen },
     { id: 'learning', label: 'Learning Tracker', icon: GraduationCap },
@@ -52,6 +76,30 @@ const App: React.FC = () => {
         return <Applications />;
       case 'ai-interviewer':
         return <AIInterviewer />;
+      case 'history':
+        return (
+          <InterviewHistory 
+            onViewScorecard={(sessionId) => {
+              setSelectedScorecardSessionId(sessionId);
+              setActiveTab('scorecard-detail');
+            }} 
+          />
+        );
+      case 'analytics':
+        return <Analytics setActiveTab={setActiveTab} />;
+      case 'weaknesses':
+        return <WeaknessAnalysis setActiveTab={setActiveTab} />;
+      case 'company-packs':
+        return <CompanyPacks setActiveTab={setActiveTab} />;
+      case 'learning-plan':
+        return <LearningPlan />;
+      case 'scorecard-detail':
+        return (
+          <ScorecardDetail 
+            sessionId={selectedScorecardSessionId} 
+            setActiveTab={setActiveTab} 
+          />
+        );
       case 'questions':
         return <Questions />;
       case 'revision':

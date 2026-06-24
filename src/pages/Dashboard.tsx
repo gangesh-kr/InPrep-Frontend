@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { apiRequest } from '../utils/api';
 import type { AnalyticsSummary, Weakness, SkillDistribution, HeatmapItem } from '../types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, LineChart, Line } from 'recharts';
 import { 
   Award, 
   Briefcase, 
@@ -17,8 +17,11 @@ import {
   Minimize2,
   Maximize2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  History,
+  BookOpen
 } from 'lucide-react';
+
 
 const highlightCode = (code: string, lang: 'javascript' | 'python') => {
   if (!code) return '';
@@ -61,6 +64,13 @@ export const Dashboard: React.FC<{ setActiveTab: (tab: string) => void }> = ({ s
   const [skills, setSkills] = useState<SkillDistribution[]>([]);
   const [heatmap, setHeatmap] = useState<HeatmapItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // New features widget states
+  const [historyCountThisWeek, setHistoryCountThisWeek] = useState<number>(0);
+  const [miniTrends, setMiniTrends] = useState<any[]>([]);
+  const [topWeakTopic, setTopWeakTopic] = useState<any | null>(null);
+  const [todayTask, setTodayTask] = useState<any | null>(null);
+
 
   // Right menu collapser state
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
@@ -334,6 +344,64 @@ export const Dashboard: React.FC<{ setActiveTab: (tab: string) => void }> = ({ s
         setWeaknesses(weakData);
         setSkills(skillsData);
         setHeatmap(heatData);
+
+        // Fetch widget details for new features
+        try {
+          const histData = await apiRequest('/interview-history?pageSize=50');
+          if (histData && histData.items) {
+            const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+            const count = histData.items.filter((item: any) => 
+              item.overallScore !== null && new Date(item.createdAt) >= oneWeekAgo
+            ).length;
+            setHistoryCountThisWeek(count);
+          }
+        } catch (e) {
+          console.warn('Failed to load history widget data:', e);
+        }
+
+        try {
+          const trendsData = await apiRequest('/analytics/trends?timeframe=30d');
+          if (trendsData && trendsData.trends) {
+            setMiniTrends(trendsData.trends);
+          }
+        } catch (e) {
+          console.warn('Failed to load mini trends data:', e);
+        }
+
+        try {
+          const weaknessProfile = await apiRequest('/weakness-profile');
+          if (weaknessProfile && weaknessProfile.topics && weaknessProfile.topics.length > 0) {
+            const severityOrder: { [key: string]: number } = { critical: 1, moderate: 2, minor: 3 };
+            const sorted = [...weaknessProfile.topics].sort((a: any, b: any) => {
+              const sevDiff = (severityOrder[a.severity] || 3) - (severityOrder[b.severity] || 3);
+              if (sevDiff !== 0) return sevDiff;
+              return b.frequency - a.frequency;
+            });
+            setTopWeakTopic(sorted[0]);
+          }
+        } catch (e) {
+          console.warn('Failed to load weakness profile widget data:', e);
+        }
+
+        try {
+          const planData = await apiRequest('/learning-plan');
+          if (planData && planData.generatedPlan && planData.generatedPlan.weeks) {
+            const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+            let foundTask: any = null;
+            for (const week of planData.generatedPlan.weeks) {
+              const task = week.dailyTasks?.find((t: any) => 
+                t.day.toLowerCase() === todayName.toLowerCase() && !t.completed
+              );
+              if (task) {
+                foundTask = task;
+                break;
+              }
+            }
+            setTodayTask(foundTask);
+          }
+        } catch (e) {
+          console.warn('Failed to load learning plan widget data:', e);
+        }
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
       } finally {
@@ -418,6 +486,88 @@ export const Dashboard: React.FC<{ setActiveTab: (tab: string) => void }> = ({ s
         </div>
 
       </div>
+
+      {/* AI Intelligence Insights Row */}
+      <div className="space-y-3">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">AI Intelligence Insights</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          
+          <button 
+            onClick={() => setActiveTab('interview-history')}
+            className="bg-white border border-slate-200 hover:border-blue-500 rounded-lg p-5 flex items-center justify-between text-left transition shadow-sm group focus:outline-none focus:ring-2 focus:ring-blue-500 h-20"
+          >
+            <div className="space-y-0.5 overflow-hidden">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Weekly Practice</span>
+              <div className="text-lg font-bold text-slate-900">{historyCountThisWeek} sessions</div>
+              <span className="text-[10px] text-slate-500 truncate block group-hover:text-blue-600 font-medium">Completed this week &rarr;</span>
+            </div>
+            <div className="w-9 h-9 rounded-full bg-slate-50 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 flex items-center justify-center transition flex-shrink-0">
+              <History className="w-4 h-4" />
+            </div>
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('analytics')}
+            className="bg-white border border-slate-200 hover:border-blue-500 rounded-lg p-5 flex items-center justify-between text-left transition shadow-sm group focus:outline-none focus:ring-2 focus:ring-blue-500 h-20"
+          >
+            <div className="space-y-0.5 flex-1 overflow-hidden pr-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Score Trajectory</span>
+              <div className="h-6 w-full my-0.5">
+                {miniTrends.length > 1 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={miniTrends}>
+                      <Line type="monotone" dataKey="score" stroke="#2563EB" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <span className="text-[10px] text-slate-400 italic">No score trend yet</span>
+                )}
+              </div>
+              <span className="text-[10px] text-slate-500 block group-hover:text-blue-600 font-medium">View full trajectory &rarr;</span>
+            </div>
+            <div className="w-9 h-9 rounded-full bg-slate-50 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 flex items-center justify-center transition flex-shrink-0">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('weakness')}
+            className="bg-white border border-slate-200 hover:border-blue-500 rounded-lg p-5 flex items-center justify-between text-left transition shadow-sm group focus:outline-none focus:ring-2 focus:ring-blue-500 h-20"
+          >
+            <div className="space-y-0.5 overflow-hidden">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Key Weakness</span>
+              <div className="text-xs font-bold text-slate-900 truncate">
+                {topWeakTopic ? topWeakTopic.name : 'Analyzing profile...'}
+              </div>
+              <span className="text-[10px] text-amber-600 font-semibold block capitalize">
+                {topWeakTopic ? `${topWeakTopic.severity} Priority` : 'Fewer than 3 sessions'}
+              </span>
+            </div>
+            <div className="w-9 h-9 rounded-full bg-slate-50 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 flex items-center justify-center transition flex-shrink-0">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+            </div>
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('learning-plan')}
+            className="bg-white border border-slate-200 hover:border-blue-500 rounded-lg p-5 flex items-center justify-between text-left transition shadow-sm group focus:outline-none focus:ring-2 focus:ring-blue-500 h-20"
+          >
+            <div className="space-y-0.5 overflow-hidden">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Daily Study Task</span>
+              <div className="text-xs font-bold text-slate-900 truncate">
+                {todayTask ? todayTask.topic : 'Rest Day / No Plan'}
+              </div>
+              <span className="text-[10px] text-slate-500 truncate block group-hover:text-blue-600 font-medium">
+                {todayTask ? `${todayTask.durationMinutes} mins scheduled` : 'Build a study plan &rarr;'}
+              </span>
+            </div>
+            <div className="w-9 h-9 rounded-full bg-slate-50 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600 flex items-center justify-center transition flex-shrink-0">
+              <BookOpen className="w-4 h-4" />
+            </div>
+          </button>
+        </div>
+      </div>
+
 
       <div className="flex flex-col lg:flex-row gap-6 relative items-stretch">
         

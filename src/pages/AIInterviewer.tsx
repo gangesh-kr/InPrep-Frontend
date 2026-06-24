@@ -3,6 +3,10 @@ import { apiRequest } from '../utils/api';
 import { useAppDispatch, useAppSelector } from '../store';
 import { setUser as setUserAction } from '../store/authSlice';
 import { 
+  useTranscribeMutation, 
+  useSynthesizeMutation 
+} from '../store/services/voiceApi';
+import { 
   Mic, 
   MicOff, 
   Volume2, 
@@ -25,7 +29,10 @@ import {
   Loader2,
   Upload,
   FileText,
-  AudioLines
+  AudioLines,
+  Pause,
+  Trash2,
+  ArrowRightCircle
 } from 'lucide-react';
 
 interface AIInterviewTranscriptItem {
@@ -97,10 +104,39 @@ export const AIInterviewer: React.FC = () => {
   const user = useAppSelector((state) => state.auth.user);
   const dispatch = useAppDispatch();
   const setUser = (u: any) => dispatch(setUserAction(u));
+
+  // Voice mutations
+  const [transcribeMutation, { isLoading: isTranscribing }] = useTranscribeMutation();
+  const [synthesizeMutation] = useSynthesizeMutation();
+
+  // Cloud Voice Mode States
+  const [cloudVoiceEnabled, setCloudVoiceEnabled] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [transcribedText, setTranscribedText] = useState('');
+  const [transcribing, setTranscribing] = useState(false);
+  const [packId, setPackId] = useState<string | null>(null);
+  const [interviewType, setInterviewType] = useState<string>('technical');
+  const [isReviewPlaying, setIsReviewPlaying] = useState(false);
+
+  // Refs for media recording and playback
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const timerIntervalRef = useRef<any>(null);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const reviewAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60).toString().padStart(2, '0');
+    const s = (secs % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
   
   // Navigation tabs within AI page: 'setup' | 'interview' | 'evaluation' | 'history' | 'view_report'
   const [activeScreen, setActiveScreen] = useState<'setup' | 'interview' | 'evaluation' | 'history' | 'view_report'>('setup');
-  
+
   // Setup form states
   const [position, setPosition] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -109,6 +145,213 @@ export const AIInterviewer: React.FC = () => {
   const [selectedVoice, setSelectedVoice] = useState<string>('');
   const [voicesList, setVoicesList] = useState<SpeechSynthesisVoice[]>([]);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+
+  // Pre-populate pack configuration from localStorage if selected
+  useEffect(() => {
+    const selectedPackStr = localStorage.getItem('iip_selected_pack');
+    if (selectedPackStr) {
+      try {
+        const pack = JSON.parse(selectedPackStr);
+        if (pack.position) setPosition(pack.position);
+        if (pack.companyName) setCompanyName(pack.companyName);
+        if (pack.jobDescription) setJobDescription(pack.jobDescription);
+        if (pack.personality) setPersonality(pack.personality);
+        if (pack.packId) setPackId(pack.packId);
+        if (pack.interviewType) setInterviewType(pack.interviewType);
+        // Default to cloud voice mode if starting from a seeded company pack for premium experience
+        setCloudVoiceEnabled(true);
+        // Clear from localStorage
+        localStorage.removeItem('iip_selected_pack');
+      } catch (err) {
+        console.error('Failed to parse selected pack from localStorage:', err);
+      }
+    }
+  }, []);
+
+  // Voice recording and playback functions
+  const startRecordingFlow = async () => {
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      alert('MediaRecorder is not supported in this browser. Please use keyboard typing mode.');
+      setIsTypingMode(true);
+      return;
+    }
+
+    try {
+      // Discard previous recorded file
+      discardRecording();
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setRecordedBlob(audioBlob);
+        const url = URL.createObjectURL(audioBlob);
+        setRecordedUrl(url);
+        
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      setRecordingSeconds(0);
+      setIsRecording(true);
+      mediaRecorder.start();
+
+      timerIntervalRef.current = setInterval(() => {
+        setRecordingSeconds(prev => prev + 1);
+      }, 1000);
+
+      playChimeSound('micOn');
+      setIsListening(true);
+    } catch (err) {
+      console.error('Failed to access microphone:', err);
+      alert('Could not access microphone. Please check your browser permissions.');
+    }
+  };
+
+  const stopRecordingFlow = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    setIsListening(false);
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    playChimeSound('micOff');
+  };
+
+  const handleTranscribeRecorded = async () => {
+    if (!recordedBlob) return;
+    setTranscribing(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', recordedBlob, 'response.webm');
+      
+      const res = await transcribeMutation(formData).unwrap();
+      setTranscribedText(res.text);
+      setSpokenAnswer(res.text); // Fill input box for review/edit
+    } catch (err) {
+      console.error('Transcription failed:', err);
+      alert('Transcription failed. You can re-record or switch to typing mode.');
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
+  const discardRecording = () => {
+    if (reviewAudioRef.current) {
+      reviewAudioRef.current.pause();
+      reviewAudioRef.current = null;
+    }
+    setIsReviewPlaying(false);
+    setRecordedBlob(null);
+    if (recordedUrl) {
+      URL.revokeObjectURL(recordedUrl);
+      setRecordedUrl(null);
+    }
+    setRecordingSeconds(0);
+    setTranscribedText('');
+    setSpokenAnswer('');
+  };
+
+  const playReviewFlow = () => {
+    if (!recordedUrl) return;
+    if (reviewAudioRef.current) {
+      reviewAudioRef.current.pause();
+      reviewAudioRef.current = null;
+      setIsReviewPlaying(false);
+      return;
+    }
+
+    const audio = new Audio(recordedUrl);
+    reviewAudioRef.current = audio;
+    setIsReviewPlaying(true);
+    audio.onended = () => {
+      setIsReviewPlaying(false);
+      reviewAudioRef.current = null;
+    };
+    audio.onerror = () => {
+      setIsReviewPlaying(false);
+      reviewAudioRef.current = null;
+    };
+    audio.play().catch(err => {
+      console.error("Failed to play review audio:", err);
+      setIsReviewPlaying(false);
+      reviewAudioRef.current = null;
+    });
+  };
+
+  const speakAITextCloud = async (text: string) => {
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current = null;
+    }
+    setIsAISpeaking(false);
+
+    if (isMuted) return;
+
+    try {
+      setIsAISpeaking(true);
+      const cleanText = text.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD00-\uDFFF]/g, '').trim();
+      
+      const audioBlob = await synthesizeMutation({ text: cleanText, voice: 'alloy' }).unwrap();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audioPlayerRef.current = audio;
+      
+      audio.onended = () => {
+        setIsAISpeaking(false);
+        audioPlayerRef.current = null;
+        URL.revokeObjectURL(audioUrl);
+        
+        if (!isTypingMode) {
+          startRecordingFlow();
+        }
+      };
+      
+      audio.onerror = (e) => {
+        console.error('TTS audio playback error:', e);
+        setIsAISpeaking(false);
+        audioPlayerRef.current = null;
+      };
+
+      await audio.play();
+    } catch (err) {
+      console.error('Cloud TTS synthesis failed:', err);
+      setIsAISpeaking(false);
+    }
+  };
+
+  const skipAudio = () => {
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current = null;
+    }
+    window.speechSynthesis.cancel();
+    setIsAISpeaking(false);
+    if (!isTypingMode) {
+      if (cloudVoiceEnabled) {
+        startRecordingFlow();
+      } else {
+        if (recognitionRef.current) {
+          try {
+            recognitionRef.current.start();
+            playChimeSound('micOn');
+          } catch (e) {}
+        }
+      }
+    }
+  };
+
   
   // Interview runtime states
   const [interviewId, setInterviewId] = useState<string | null>(null);
@@ -434,6 +677,11 @@ export const AIInterviewer: React.FC = () => {
       formData.append('companyName', companyName);
       formData.append('jobDescription', jobDescription);
       formData.append('personality', personality);
+      formData.append('voiceEnabled', cloudVoiceEnabled.toString());
+      formData.append('interviewType', interviewType);
+      if (packId) {
+        formData.append('packId', packId);
+      }
       if (resumeFile) {
         formData.append('resume', resumeFile);
       }
@@ -465,7 +713,11 @@ export const AIInterviewer: React.FC = () => {
       
       // Delay speech slightly to let user settle in
       setTimeout(() => {
-        speakAIText(data.firstQuestion);
+        if (cloudVoiceEnabled) {
+          speakAITextCloud(data.firstQuestion);
+        } else {
+          speakAIText(data.firstQuestion);
+        }
       }, 800);
 
     } catch (error: any) {
@@ -484,11 +736,16 @@ export const AIInterviewer: React.FC = () => {
     }
 
     // Stop speaking or listening
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current = null;
+    }
     window.speechSynthesis.cancel();
     setIsAISpeaking(false);
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }
+    stopRecordingFlow();
 
     setIsSubmitting(true);
     
@@ -545,9 +802,15 @@ export const AIInterviewer: React.FC = () => {
 
         // Speak the next question
         setTimeout(() => {
-          speakAIText(data.nextQuestion);
+          if (cloudVoiceEnabled) {
+            speakAITextCloud(data.nextQuestion);
+          } else {
+            speakAIText(data.nextQuestion);
+          }
         }, 300);
       }
+
+      discardRecording();
 
     } catch (error: any) {
       console.error('Error submitting response:', error);
@@ -848,6 +1111,28 @@ export const AIInterviewer: React.FC = () => {
                 </div>
               </div>
 
+              {/* Cloud Voice Mode Toggle */}
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl flex items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-indigo-600" />
+                    <h4 className="text-xs font-bold text-slate-900">Cloud Voice Mode (OpenAI Whisper & TTS)</h4>
+                  </div>
+                  <p className="text-[10px] text-slate-600 leading-normal">
+                    Experience ultra-realistic AI voice synthesis and highly accurate speech recognition via OpenAI.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={cloudVoiceEnabled}
+                    onChange={(e) => setCloudVoiceEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
               {/* Mic / Audio connection check */}
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                 <div className="flex justify-between items-center">
@@ -1090,7 +1375,7 @@ export const AIInterviewer: React.FC = () => {
             </div>
             
             {/* Status labels */}
-            <div className="text-center space-y-1">
+            <div className="text-center space-y-1 flex flex-col items-center gap-2">
               <span className={`text-[10px] tracking-widest font-black uppercase px-3 py-1 rounded-full border ${
                 isAISpeaking ? 'text-blue-400 bg-blue-950/40 border-blue-900/30' :
                 isListening ? 'text-emerald-400 bg-emerald-950/40 border-emerald-900/30 animate-pulse' :
@@ -1102,6 +1387,15 @@ export const AIInterviewer: React.FC = () => {
                  isSubmitting ? 'AI Core Processing' :
                  'System Idle'}
               </span>
+              {isAISpeaking && (
+                <button
+                  onClick={skipAudio}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-full text-[10px] font-bold transition shadow-sm"
+                >
+                  <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Skip Playback</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -1130,39 +1424,185 @@ export const AIInterviewer: React.FC = () => {
           {/* CANDIDATE TRANSCRIPT / INPUT PANEL */}
           <div className="w-full max-w-3xl space-y-4">
             
-            {!isTypingMode ? (
-              /* VOICE TRANSCRIPTION OUTPUT */
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3 min-h-[100px] flex flex-col justify-center relative">
-                <span className="absolute top-3 right-4 text-[10px] text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                  Live Speech-to-Text
-                </span>
-                
-                {spokenAnswer ? (
-                  <p className="text-slate-200 text-sm italic pr-12 font-medium">
-                    "{spokenAnswer}"
-                  </p>
+            {cloudVoiceEnabled && !isTypingMode ? (
+              /* VOCAL RECORDING PANEL (Whisper & TTS mode) */
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 min-h-[180px] flex flex-col items-center justify-center relative">
+                {isRecording ? (
+                  /* 1. Recording State */
+                  <div className="flex flex-col items-center justify-center space-y-4 w-full">
+                    <span className="text-[10px] text-rose-500 font-black uppercase tracking-widest flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+                      Recording Response
+                    </span>
+                    
+                    {/* SVG Waveform Animation */}
+                    <div className="flex items-end justify-center gap-1.5 h-12 w-full">
+                      <div className="w-1 bg-rose-500 rounded-full animate-user-wave animate-duration-[1000ms]" style={{ height: '24px', animationDelay: '0.1s' }}></div>
+                      <div className="w-1 bg-rose-600 rounded-full animate-user-wave animate-duration-[700ms]" style={{ height: '36px', animationDelay: '0.2s' }}></div>
+                      <div className="w-1 bg-rose-400 rounded-full animate-user-wave animate-duration-[800ms]" style={{ height: '16px', animationDelay: '0.3s' }}></div>
+                      <div className="w-1 bg-rose-500 rounded-full animate-user-wave animate-duration-[1200ms]" style={{ height: '48px', animationDelay: '0.4s' }}></div>
+                      <div className="w-1 bg-rose-600 rounded-full animate-user-wave animate-duration-[900ms]" style={{ height: '32px', animationDelay: '0.5s' }}></div>
+                      <div className="w-1 bg-rose-400 rounded-full animate-user-wave animate-duration-[600ms]" style={{ height: '20px', animationDelay: '0.6s' }}></div>
+                      <div className="w-1 bg-rose-500 rounded-full animate-user-wave animate-duration-[1100ms]" style={{ height: '40px', animationDelay: '0.7s' }}></div>
+                    </div>
+
+                    <div className="text-xl font-mono text-slate-100 tracking-wider">
+                      {formatTime(recordingSeconds)}
+                    </div>
+
+                    <button
+                      onClick={stopRecordingFlow}
+                      className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-bold px-6 py-3 rounded-xl text-xs transition border border-rose-500 shadow-lg shadow-rose-900/20"
+                    >
+                      <Pause className="w-4 h-4 fill-white" />
+                      <span>Stop Recording</span>
+                    </button>
+                  </div>
+                ) : transcribing || isTranscribing ? (
+                  /* 2. Transcribing State */
+                  <div className="flex flex-col items-center justify-center space-y-4 w-full">
+                    <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+                    <p className="text-sm font-semibold text-slate-300">Whisper is transcribing your response...</p>
+                  </div>
+                ) : recordedBlob ? (
+                  /* 3. Recorded & Transcribed States */
+                  <div className="w-full space-y-4">
+                    {spokenAnswer ? (
+                      /* 3b. Transcribed - Review & Edit text */
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                            <FileText className="w-3.5 h-3.5" />
+                            Review & Edit Transcription
+                          </span>
+                          <span className="text-[9px] text-slate-500">Modify if needed before submitting</span>
+                        </div>
+                        <textarea
+                          value={spokenAnswer}
+                          onChange={(e) => setSpokenAnswer(e.target.value)}
+                          rows={4}
+                          className="w-full text-sm px-4 py-3 bg-slate-950 border border-slate-800 text-slate-100 focus:border-blue-500 focus:bg-slate-950 rounded-xl outline-none transition resize-none font-sans"
+                        />
+                        <div className="flex items-center justify-end gap-2.5">
+                          <button
+                            onClick={discardRecording}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition border border-slate-700"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Re-record</span>
+                          </button>
+                          <button
+                            onClick={handleSubmitAnswer}
+                            disabled={isSubmitting || !spokenAnswer.trim()}
+                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-900 text-white disabled:text-slate-600 font-bold px-6 py-2 rounded-xl text-xs transition border border-transparent disabled:border-slate-800/80 shadow"
+                          >
+                            {isSubmitting ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>Grading...</span>
+                              </>
+                            ) : (
+                              <>
+                                <ArrowRightCircle className="w-3.5 h-3.5" />
+                                <span>Confirm & Submit</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* 3a. Recorded - Review Audio / Transcribe */
+                      <div className="flex flex-col items-center justify-center space-y-5 py-2 w-full">
+                        <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">
+                          Audio Recorded Successfully
+                        </span>
+                        
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={playReviewFlow}
+                            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition border ${
+                              isReviewPlaying
+                                ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-500 shadow'
+                                : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                            }`}
+                          >
+                            {isReviewPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                            <span>{isReviewPlaying ? 'Pause Review' : 'Play Review'}</span>
+                          </button>
+                          
+                          <button
+                            onClick={discardRecording}
+                            className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition border border-slate-700"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                            <span>Re-record</span>
+                          </button>
+                        </div>
+
+                        <button
+                          onClick={handleTranscribeRecorded}
+                          className="w-full max-w-xs flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 px-6 rounded-xl text-xs transition border border-transparent shadow"
+                        >
+                          <Upload className="w-4 h-4" />
+                          <span>Confirm & Transcribe</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <p className="text-slate-500 text-sm italic text-center">
-                    {isListening ? 'Say something... your speech will display here in real-time.' : 'Press "Start Listening" to dictate your answer.'}
-                  </p>
+                  /* 4. Idle / Ready to Record State */
+                  <div className="flex flex-col items-center justify-center space-y-3 w-full py-4">
+                    <p className="text-xs text-slate-400 text-center font-medium">
+                      Press the button below and speak your answer clearly.
+                    </p>
+                    <button
+                      onClick={startRecordingFlow}
+                      className="flex items-center gap-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black px-6 py-4 rounded-xl text-xs transition border border-blue-500 shadow-lg shadow-blue-900/10"
+                    >
+                      <Mic className="w-4 h-4 text-blue-100" />
+                      <span>Record Response</span>
+                    </button>
+                  </div>
                 )}
               </div>
             ) : (
-              /* KEYBOARD TYPING MODE */
-              <div className="space-y-2">
-                <div className="flex justify-between items-center px-1">
-                  <span className="text-xs font-bold text-slate-400">Type Your Answer</span>
-                  <span className="text-[10px] text-slate-500">Press Shift+Enter for new line</span>
-                </div>
-                <textarea
-                  value={spokenAnswer}
-                  onChange={(e) => setSpokenAnswer(e.target.value)}
-                  placeholder="Type your response to the interviewer's question..."
-                  rows={4}
-                  className="w-full text-sm px-4 py-3 bg-slate-900 border border-slate-800 text-slate-100 focus:border-blue-500 focus:bg-slate-900 rounded-xl outline-none transition resize-none font-sans"
-                />
-              </div>
+              /* Otherwise render the default inputs */
+              <>
+                {!isTypingMode ? (
+                  /* DEFAULT VOICE TRANSCRIPTION OUTPUT */
+                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3 min-h-[100px] flex flex-col justify-center relative">
+                    <span className="absolute top-3 right-4 text-[10px] text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                      Live Speech-to-Text
+                    </span>
+                    
+                    {spokenAnswer ? (
+                      <p className="text-slate-200 text-sm italic pr-12 font-medium">
+                        "{spokenAnswer}"
+                      </p>
+                    ) : (
+                      <p className="text-slate-500 text-sm italic text-center">
+                        {isListening ? 'Say something... your speech will display here in real-time.' : 'Press "Start Listening" to dictate your answer.'}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  /* KEYBOARD TYPING MODE */
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center px-1">
+                      <span className="text-xs font-bold text-slate-400">Type Your Answer</span>
+                      <span className="text-[10px] text-slate-500">Press Shift+Enter for new line</span>
+                    </div>
+                    <textarea
+                      value={spokenAnswer}
+                      onChange={(e) => setSpokenAnswer(e.target.value)}
+                      placeholder="Type your response to the interviewer's question..."
+                      rows={4}
+                      className="w-full text-sm px-4 py-3 bg-slate-900 border border-slate-800 text-slate-100 focus:border-blue-500 focus:bg-slate-900 rounded-xl outline-none transition resize-none font-sans"
+                    />
+                  </div>
+                )}
+              </>
             )}
 
             {/* CONTROLS BAR */}
@@ -1170,7 +1610,7 @@ export const AIInterviewer: React.FC = () => {
               
               <div className="flex items-center gap-2">
                 {/* Listening Toggle */}
-                {!isTypingMode && (
+                {!isTypingMode && !cloudVoiceEnabled && (
                   <button
                     onClick={toggleListening}
                     disabled={isSubmitting}
@@ -1192,7 +1632,13 @@ export const AIInterviewer: React.FC = () => {
 
                 {/* Speak Question again */}
                 <button
-                  onClick={() => speakAIText(currentQuestion)}
+                  onClick={() => {
+                    if (cloudVoiceEnabled) {
+                      speakAITextCloud(currentQuestion);
+                    } else {
+                      speakAIText(currentQuestion);
+                    }
+                  }}
                   disabled={isSubmitting}
                   className="flex items-center justify-center p-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-xl transition"
                   title="Repeat Question"
@@ -1206,10 +1652,22 @@ export const AIInterviewer: React.FC = () => {
                     const newMute = !isMuted;
                     setIsMuted(newMute);
                     if (newMute) {
-                      window.speechSynthesis.cancel();
-                      setIsAISpeaking(false);
+                      if (cloudVoiceEnabled) {
+                        if (audioPlayerRef.current) {
+                          audioPlayerRef.current.pause();
+                          audioPlayerRef.current = null;
+                        }
+                        setIsAISpeaking(false);
+                      } else {
+                        window.speechSynthesis.cancel();
+                        setIsAISpeaking(false);
+                      }
                     } else {
-                      speakAIText(currentQuestion);
+                      if (cloudVoiceEnabled) {
+                        speakAITextCloud(currentQuestion);
+                      } else {
+                        speakAIText(currentQuestion);
+                      }
                     }
                   }}
                   className="flex items-center justify-center p-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-xl transition"
@@ -1228,6 +1686,9 @@ export const AIInterviewer: React.FC = () => {
                     setIsTypingMode(!isTypingMode);
                     if (isListening && recognitionRef.current) {
                       recognitionRef.current.stop();
+                    }
+                    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                      stopRecordingFlow();
                     }
                   }}
                   className="flex items-center gap-1.5 px-3 py-2 text-slate-400 hover:text-slate-200 text-xs font-semibold hover:bg-slate-900 rounded-xl transition"
@@ -1255,23 +1716,25 @@ export const AIInterviewer: React.FC = () => {
                 </button>
 
                 {/* Submit button */}
-                <button
-                  onClick={handleSubmitAnswer}
-                  disabled={isSubmitting || !spokenAnswer.trim()}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-900 text-white disabled:text-slate-600 font-bold px-5 py-2.5 rounded-xl text-xs transition border border-transparent disabled:border-slate-800/80"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Grading...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Submit Answer</span>
-                    </>
-                  )}
-                </button>
+                {(!cloudVoiceEnabled || isTypingMode) && (
+                  <button
+                    onClick={handleSubmitAnswer}
+                    disabled={isSubmitting || !spokenAnswer.trim()}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-900 text-white disabled:text-slate-600 font-bold px-5 py-2.5 rounded-xl text-xs transition border border-transparent disabled:border-slate-800/80"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Grading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Submit Answer</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
 
             </div>

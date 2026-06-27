@@ -26,7 +26,7 @@ export const historyApi = createApi({
     }),
     getHistoryDetails: builder.query({
       query: (sessionId) => `/interview-history/${sessionId}`,
-      providesTags: (result, error, arg) => [{ type: 'History', id: arg }],
+      providesTags: (_result, _error, arg) => [{ type: 'History', id: arg }],
     }),
     deleteHistory: builder.mutation({
       query: (sessionId) => ({

@@ -423,14 +423,14 @@ export const Dashboard: React.FC<{ setActiveTab: (tab: string) => void }> = ({ s
   return (
     <div className="space-y-6">
       
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Overview</h1>
           <p className="text-slate-500 text-sm">Every interview is training data. Here is your current readiness.</p>
         </div>
         <button
           onClick={() => setActiveTab('revision')}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-semibold transition shadow-sm"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-semibold transition shadow-sm w-full sm:w-auto"
         >
           <Play className="w-4 h-4 fill-current" />
           Start Daily Revision

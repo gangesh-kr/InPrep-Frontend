@@ -49,7 +49,7 @@ export const scorecardsApi = createApi({
     }),
     getPublicScorecard: builder.query({
       query: (publicToken) => `/scorecard/public/${publicToken}`,
-      providesTags: (result, error, arg) => [{ type: 'Scorecard', id: arg }],
+      providesTags: (_result, _error, arg) => [{ type: 'Scorecard', id: arg }],
     }),
   }),
 });

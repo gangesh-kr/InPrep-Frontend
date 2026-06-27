@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from './store';
 import { logout } from './store/authSlice';
 import { Login } from './pages/Login';
@@ -38,9 +38,25 @@ const App: React.FC = () => {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const user = useAppSelector((state) => state.auth.user);
   const dispatch = useAppDispatch();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    return localStorage.getItem('inprep_active_tab') || 'dashboard';
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [selectedScorecardSessionId, setSelectedScorecardSessionId] = useState<string | null>(null);
+  const [selectedScorecardSessionId, setSelectedScorecardSessionId] = useState<string | null>(() => {
+    return localStorage.getItem('inprep_selected_scorecard_session_id');
+  });
+
+  useEffect(() => {
+    localStorage.setItem('inprep_active_tab', activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (selectedScorecardSessionId) {
+      localStorage.setItem('inprep_selected_scorecard_session_id', selectedScorecardSessionId);
+    } else {
+      localStorage.removeItem('inprep_selected_scorecard_session_id');
+    }
+  }, [selectedScorecardSessionId]);
 
   const isPublicScorecardRoute = window.location.pathname.startsWith('/scorecard/');
 
@@ -120,9 +136,9 @@ const App: React.FC = () => {
       <div className="md:hidden bg-white border-b border-slate-200 p-4 flex items-center justify-between z-20">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white font-bold">
-            I
+            In
           </div>
-          <span className="font-bold text-slate-950 tracking-tight text-lg">IIP</span>
+          <span className="font-bold text-slate-950 tracking-tight text-lg">InPrep</span>
         </div>
         <button 
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -131,6 +147,13 @@ const App: React.FC = () => {
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
       </div>
+      {/* Mobile Menu Backdrop */}
+      {mobileMenuOpen && (
+        <div 
+          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-20 md:hidden"
+        />
+      )}
 
       {/* Sidebar Navigation */}
       <aside className={`
@@ -142,11 +165,11 @@ const App: React.FC = () => {
           {/* Sidebar Brand Header */}
           <div className="p-6 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
             <div className="w-9 h-9 rounded bg-blue-600 flex items-center justify-center text-white font-bold shadow-sm">
-              I
+              In
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-slate-950 tracking-tight text-base leading-none">IIP</span>
-              <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase mt-1">Intelligence Panel</span>
+              <span className="font-bold text-slate-950 tracking-tight text-base leading-none">InPrep</span>
+              <span className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase mt-1">Preparation Hub</span>
             </div>
           </div>
 
@@ -189,7 +212,11 @@ const App: React.FC = () => {
           </div>
 
           <button
-            onClick={() => dispatch(logout())}
+            onClick={() => {
+              localStorage.removeItem('inprep_active_tab');
+              localStorage.removeItem('inprep_selected_scorecard_session_id');
+              dispatch(logout());
+            }}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 hover:bg-slate-50 rounded-md text-xs font-semibold text-slate-600 transition"
           >
             <LogOut className="w-3.5 h-3.5" />

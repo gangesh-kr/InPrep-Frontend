@@ -29,7 +29,7 @@ export const CompanyPacks: React.FC<{ setActiveTab: (tab: string) => void }> = (
   const handleStartInterview = (pack: any) => {
     // Save pack context to localStorage for AIInterviewer page to consume
     localStorage.setItem(
-      'iip_selected_pack',
+      'inprep_selected_pack',
       JSON.stringify({
         packId: pack.id,
         companyName: pack.companyName,

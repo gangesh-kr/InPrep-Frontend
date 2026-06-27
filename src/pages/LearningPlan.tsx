@@ -360,14 +360,14 @@ export const LearningPlan: React.FC = () => {
             </div>
 
             {/* 7 Day Columns Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols-7 gap-3">
               {daysOfWeek.map((dayName) => {
                 // Get tasks for this day in the current week
                 // Since tasks can have multiple per day, or none
                 const dayTasks = currentWeek.dailyTasks?.filter((t: any) => t.day.toLowerCase() === dayName.toLowerCase()) || [];
                 
                 return (
-                  <div key={dayName} className="space-y-2 border-r border-slate-100 last:border-0 pr-1">
+                  <div key={dayName} className="space-y-2 border-b lg:border-b-0 lg:border-r border-slate-100 last:border-0 pb-4 lg:pb-0 lg:pr-1">
                     <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center border-b border-slate-100 pb-1.5">
                       {dayName.slice(0, 3)}
                     </span>

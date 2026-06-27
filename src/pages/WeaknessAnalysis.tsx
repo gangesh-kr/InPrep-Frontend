@@ -16,13 +16,10 @@ import {
 } from 'recharts';
 import { 
   Loader2, 
-  AlertTriangle, 
   RefreshCw, 
   CheckSquare, 
   Square, 
-  Cpu, 
-  ChevronRight,
-  BookOpen
+  Cpu
 } from 'lucide-react';
 
 export const WeaknessAnalysis: React.FC<{ setActiveTab?: (tab: string) => void }> = ({ setActiveTab }) => {
@@ -55,8 +52,8 @@ export const WeaknessAnalysis: React.FC<{ setActiveTab?: (tab: string) => void }
     if (profile && !profile.needsMoreData && profile.topics) {
       const loaded: { [key: string]: boolean } = {};
       profile.topics.forEach((topic: any) => {
-        topic.recommendations.forEach((rec: string, idx: number) => {
-          const key = `iip_weakness_${userId}_${topic.name}_${idx}`;
+        topic.recommendations.forEach((_rec: string, idx: number) => {
+          const key = `inprep_weakness_${userId}_${topic.name}_${idx}`;
           loaded[key] = localStorage.getItem(key) === 'true';
         });
       });
@@ -65,7 +62,7 @@ export const WeaknessAnalysis: React.FC<{ setActiveTab?: (tab: string) => void }
   }, [profile, userId]);
 
   const toggleChecklist = (topicName: string, index: number) => {
-    const key = `iip_weakness_${userId}_${topicName}_${index}`;
+    const key = `inprep_weakness_${userId}_${topicName}_${index}`;
     const newState = !checklist[key];
     setChecklist(prev => ({ ...prev, [key]: newState }));
     localStorage.setItem(key, String(newState));
@@ -202,7 +199,7 @@ export const WeaknessAnalysis: React.FC<{ setActiveTab?: (tab: string) => void }
         <div className="h-60 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
-              layout="y"
+              layout="vertical"
               data={sortedTopics}
               margin={{ top: 10, right: 10, left: 30, bottom: 5 }}
             >
@@ -264,7 +261,7 @@ export const WeaknessAnalysis: React.FC<{ setActiveTab?: (tab: string) => void }
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Study Recommendations Checklist</span>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {topic.recommendations.map((rec: string, rIdx: number) => {
-                      const key = `iip_weakness_${userId}_${topic.name}_${rIdx}`;
+                      const key = `inprep_weakness_${userId}_${topic.name}_${rIdx}`;
                       const isTicked = !!checklist[key];
                       
                       return (

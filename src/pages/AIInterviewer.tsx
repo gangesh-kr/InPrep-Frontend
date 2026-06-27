@@ -2,28 +2,28 @@ import React, { useState, useEffect, useRef } from 'react';
 import { apiRequest } from '../utils/api';
 import { useAppDispatch, useAppSelector } from '../store';
 import { setUser as setUserAction } from '../store/authSlice';
-import { 
-  useTranscribeMutation, 
-  useSynthesizeMutation 
+import {
+  useTranscribeMutation,
+  useSynthesizeMutation
 } from '../store/services/voiceApi';
-import { 
-  Mic, 
-  MicOff, 
-  Volume2, 
-  VolumeX, 
-  Play, 
-  RotateCcw, 
-  Sparkles, 
-  CheckCircle2, 
-  XCircle, 
-  AlertCircle, 
-  ChevronDown, 
-  ChevronUp, 
-  ArrowRight, 
-  Calendar, 
-  Briefcase, 
-  History, 
-  Keyboard, 
+import {
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
+  Play,
+  RotateCcw,
+  Sparkles,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  ArrowRight,
+  Calendar,
+  Briefcase,
+  History,
+  Keyboard,
   Send,
   Cpu,
   Loader2,
@@ -115,7 +115,6 @@ export const AIInterviewer: React.FC = () => {
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const [transcribedText, setTranscribedText] = useState('');
   const [transcribing, setTranscribing] = useState(false);
   const [packId, setPackId] = useState<string | null>(null);
   const [interviewType, setInterviewType] = useState<string>('technical');
@@ -133,7 +132,7 @@ export const AIInterviewer: React.FC = () => {
     const s = (secs % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
   };
-  
+
   // Navigation tabs within AI page: 'setup' | 'interview' | 'evaluation' | 'history' | 'view_report'
   const [activeScreen, setActiveScreen] = useState<'setup' | 'interview' | 'evaluation' | 'history' | 'view_report'>('setup');
 
@@ -148,7 +147,7 @@ export const AIInterviewer: React.FC = () => {
 
   // Pre-populate pack configuration from localStorage if selected
   useEffect(() => {
-    const selectedPackStr = localStorage.getItem('iip_selected_pack');
+    const selectedPackStr = localStorage.getItem('inprep_selected_pack');
     if (selectedPackStr) {
       try {
         const pack = JSON.parse(selectedPackStr);
@@ -161,7 +160,7 @@ export const AIInterviewer: React.FC = () => {
         // Default to cloud voice mode if starting from a seeded company pack for premium experience
         setCloudVoiceEnabled(true);
         // Clear from localStorage
-        localStorage.removeItem('iip_selected_pack');
+        localStorage.removeItem('inprep_selected_pack');
       } catch (err) {
         console.error('Failed to parse selected pack from localStorage:', err);
       }
@@ -196,7 +195,7 @@ export const AIInterviewer: React.FC = () => {
         setRecordedBlob(audioBlob);
         const url = URL.createObjectURL(audioBlob);
         setRecordedUrl(url);
-        
+
         stream.getTracks().forEach(track => track.stop());
       };
 
@@ -235,9 +234,8 @@ export const AIInterviewer: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append('file', recordedBlob, 'response.webm');
-      
+
       const res = await transcribeMutation(formData).unwrap();
-      setTranscribedText(res.text);
       setSpokenAnswer(res.text); // Fill input box for review/edit
     } catch (err) {
       console.error('Transcription failed:', err);
@@ -259,7 +257,6 @@ export const AIInterviewer: React.FC = () => {
       setRecordedUrl(null);
     }
     setRecordingSeconds(0);
-    setTranscribedText('');
     setSpokenAnswer('');
   };
 
@@ -302,22 +299,22 @@ export const AIInterviewer: React.FC = () => {
     try {
       setIsAISpeaking(true);
       const cleanText = text.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD00-\uDFFF]/g, '').trim();
-      
+
       const audioBlob = await synthesizeMutation({ text: cleanText, voice: 'alloy' }).unwrap();
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
       audioPlayerRef.current = audio;
-      
+
       audio.onended = () => {
         setIsAISpeaking(false);
         audioPlayerRef.current = null;
         URL.revokeObjectURL(audioUrl);
-        
+
         if (!isTypingMode) {
           startRecordingFlow();
         }
       };
-      
+
       audio.onerror = (e) => {
         console.error('TTS audio playback error:', e);
         setIsAISpeaking(false);
@@ -346,13 +343,13 @@ export const AIInterviewer: React.FC = () => {
           try {
             recognitionRef.current.start();
             playChimeSound('micOn');
-          } catch (e) {}
+          } catch (e) { }
         }
       }
     }
   };
 
-  
+
   // Interview runtime states
   const [interviewId, setInterviewId] = useState<string | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState('');
@@ -366,17 +363,17 @@ export const AIInterviewer: React.FC = () => {
   const [totalRounds] = useState(10);
   const [isSimulatedMode, setIsSimulatedMode] = useState(false);
   const [transcript, setTranscript] = useState<AIInterviewTranscriptItem[]>([]);
-  
+
   // Evaluation results states
   const [evaluation, setEvaluation] = useState<AIInterviewEvaluation | null>(null);
   const [openAnalysisIndex, setOpenAnalysisIndex] = useState<number | null>(null);
-  
+
   // History states
   const [historyList, setHistoryList] = useState<AIInterviewItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [detailedReport, setDetailedReport] = useState<any>(null);
   const [reportLoading, setReportLoading] = useState(false);
-  
+
   // Web Speech API refs
   const recognitionRef = useRef<any>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -393,7 +390,7 @@ export const AIInterviewer: React.FC = () => {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioContextClass) return;
       const ctx = new AudioContextClass();
-      
+
       if (type === 'micOn') {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -442,18 +439,18 @@ export const AIInterviewer: React.FC = () => {
     setIsTestingAudio(true);
     setAudioTestStatus('playing');
     setAudioTestResultText('Playing system voice check...');
-    
+
     window.speechSynthesis.cancel();
     const testUtterance = new SpeechSynthesisUtterance("Hello! This is your audio and mic connection check. Let's make sure you can hear me. After I finish speaking, please say a few words to test your microphone.");
     const voice = voicesList.find(v => v.name === selectedVoice);
     if (voice) testUtterance.voice = voice;
     testUtterance.rate = 1.0;
-    
+
     testUtterance.onend = () => {
       setAudioTestStatus('listening');
       setAudioTestResultText('System listening... Say anything!');
       playChimeSound('micOn');
-      
+
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (!SpeechRecognition) {
         setAudioTestStatus('success');
@@ -461,7 +458,7 @@ export const AIInterviewer: React.FC = () => {
         setIsTestingAudio(false);
         return;
       }
-      
+
       const testRec = new SpeechRecognition();
       testRec.lang = 'en-US';
       testRec.onresult = (event: any) => {
@@ -480,7 +477,7 @@ export const AIInterviewer: React.FC = () => {
         setIsTestingAudio(false);
         playChimeSound('micOff');
       };
-      
+
       try {
         testRec.start();
       } catch (err) {
@@ -489,7 +486,7 @@ export const AIInterviewer: React.FC = () => {
         setIsTestingAudio(false);
       }
     };
-    
+
     window.speechSynthesis.speak(testUtterance);
   };
 
@@ -500,7 +497,7 @@ export const AIInterviewer: React.FC = () => {
       // Filter for english voices primarily
       const engVoices = allVoices.filter(voice => voice.lang.startsWith('en'));
       setVoicesList(engVoices.length > 0 ? engVoices : allVoices);
-      
+
       // Auto-select a nice voice
       if (engVoices.length > 0 && !selectedVoice) {
         // Try Google US English or Microsoft David
@@ -508,12 +505,12 @@ export const AIInterviewer: React.FC = () => {
         setSelectedVoice(preferred ? preferred.name : engVoices[0].name);
       }
     };
-    
+
     loadVoices();
     if (window.speechSynthesis.onvoiceschanged !== undefined) {
       window.speechSynthesis.onvoiceschanged = loadVoices;
     }
-    
+
     return () => {
       window.speechSynthesis.cancel();
     };
@@ -527,15 +524,15 @@ export const AIInterviewer: React.FC = () => {
       rec.continuous = true;
       rec.interimResults = true;
       rec.lang = 'en-US';
-      
+
       rec.onstart = () => {
         setIsListening(true);
       };
-      
+
       rec.onresult = (event: any) => {
         let finalTranscript = '';
         let interimTranscript = '';
-        
+
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
             finalTranscript += event.results[i][0].transcript;
@@ -543,7 +540,7 @@ export const AIInterviewer: React.FC = () => {
             interimTranscript += event.results[i][0].transcript;
           }
         }
-        
+
         // Update input box with spoken words
         if (finalTranscript) {
           setSpokenAnswer(finalTranscript);
@@ -551,18 +548,18 @@ export const AIInterviewer: React.FC = () => {
           setSpokenAnswer(interimTranscript);
         }
       };
-      
+
       rec.onerror = (err: any) => {
         console.error('Speech recognition error:', err);
         if (err.error !== 'no-speech') {
           setIsListening(false);
         }
       };
-      
+
       rec.onend = () => {
         setIsListening(false);
       };
-      
+
       recognitionRef.current = rec;
     }
   }, []);
@@ -585,7 +582,7 @@ export const AIInterviewer: React.FC = () => {
   // Speaks AI text
   const speakAIText = (text: string) => {
     window.speechSynthesis.cancel(); // Cancel current speech
-    
+
     if (isMuted) return;
 
     // Remove any prefixes or emojis for speech synthesis text
@@ -596,10 +593,10 @@ export const AIInterviewer: React.FC = () => {
     if (voice) {
       utterance.voice = voice;
     }
-    
+
     utterance.rate = 0.95; // Slightly slower for better comprehensibility
     utterance.pitch = 1.0;
-    
+
     utterance.onstart = () => {
       setIsAISpeaking(true);
       // If listening was active, pause it while AI speaks
@@ -607,7 +604,7 @@ export const AIInterviewer: React.FC = () => {
         recognitionRef.current.stop();
       }
     };
-    
+
     utterance.onend = () => {
       setIsAISpeaking(false);
       // Auto-trigger microphone listening after AI stops speaking (if not typing mode)
@@ -620,12 +617,12 @@ export const AIInterviewer: React.FC = () => {
         }
       }
     };
-    
+
     utterance.onerror = (e) => {
       console.error('TTS error:', e);
       setIsAISpeaking(false);
     };
-    
+
     utteranceRef.current = utterance;
     window.speechSynthesis.speak(utterance);
   };
@@ -665,10 +662,10 @@ export const AIInterviewer: React.FC = () => {
       return;
     }
 
-    if (user && user.credits <= 0) {
-      alert('You have 0 mock session credits remaining. Please buy more credits to start a new interview.');
-      return;
-    }
+    // if (user && user.credits <= 0) {
+    //   alert('You have 0 mock session credits remaining. Please buy more credits to start a new interview.');
+    //   return;
+    // }
 
     setIsSubmitting(true);
     try {
@@ -703,14 +700,14 @@ export const AIInterviewer: React.FC = () => {
           timestamp: new Date().toISOString()
         }
       ]);
-      
+
       // Update local user credits
-      if (user) {
-        setUser({ ...user, credits: Math.max(0, user.credits - 1) });
-      }
-      
+      // if (user) {
+      //   setUser({ ...user, credits: Math.max(0, user.credits - 1) });
+      // }
+
       setActiveScreen('interview');
-      
+
       // Delay speech slightly to let user settle in
       setTimeout(() => {
         if (cloudVoiceEnabled) {
@@ -748,7 +745,7 @@ export const AIInterviewer: React.FC = () => {
     stopRecordingFlow();
 
     setIsSubmitting(true);
-    
+
     // Add user response to local transcript state immediately
     const updatedTranscript = [
       ...transcript,
@@ -759,7 +756,7 @@ export const AIInterviewer: React.FC = () => {
       }
     ];
     setTranscript(updatedTranscript);
-    
+
     const currentAnswer = spokenAnswer;
     setSpokenAnswer('');
 
@@ -789,7 +786,7 @@ export const AIInterviewer: React.FC = () => {
         // Update question and state
         setCurrentQuestion(data.nextQuestion);
         setRoundNumber(data.currentRound);
-        
+
         // Append next interviewer question to transcript
         setTranscript([
           ...updatedTranscript,
@@ -835,7 +832,7 @@ export const AIInterviewer: React.FC = () => {
           method: 'POST',
           body: JSON.stringify({ interviewId })
         });
-        
+
         playChimeSound('success');
         const evalData = data.evaluation;
         setEvaluation({
@@ -925,7 +922,7 @@ export const AIInterviewer: React.FC = () => {
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6">
-      
+
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 bg-gradient-to-r from-blue-700 via-indigo-700 to-indigo-800 rounded-2xl text-white shadow-lg overflow-hidden relative">
         <div className="absolute inset-0 bg-grid-white/10 opacity-20 pointer-events-none"></div>
@@ -946,13 +943,13 @@ export const AIInterviewer: React.FC = () => {
         <div className="flex items-center gap-2 z-10">
           {activeScreen !== 'interview' && (
             <>
-              <button 
+              <button
                 onClick={() => setActiveScreen('setup')}
                 className={`px-4 py-2 text-xs font-bold rounded-lg transition-all border ${activeScreen === 'setup' ? 'bg-white text-indigo-950 border-white shadow-md' : 'bg-transparent text-white border-white/20 hover:bg-white/10'}`}
               >
                 Setup Room
               </button>
-              <button 
+              <button
                 onClick={fetchHistory}
                 className={`px-4 py-2 text-xs font-bold rounded-lg transition-all border flex items-center gap-1.5 ${['history', 'view_report'].includes(activeScreen) ? 'bg-white text-indigo-950 border-white shadow-md' : 'bg-transparent text-white border-white/20 hover:bg-white/10'}`}
               >
@@ -969,7 +966,7 @@ export const AIInterviewer: React.FC = () => {
       {/* ---------------------------------------------------- */}
       {activeScreen === 'setup' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
+
           {/* Main Config Form */}
           <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
             <div className="border-b border-slate-100 pb-4">
@@ -991,7 +988,7 @@ export const AIInterviewer: React.FC = () => {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-1.5">
                   <label htmlFor="company" className="text-xs font-bold text-slate-700">Company Name (Optional)</label>
                   <input
@@ -1030,7 +1027,7 @@ export const AIInterviewer: React.FC = () => {
                   </label>
                   <span className="text-[10px] text-slate-400 font-semibold">Used for skill verification & cross-examination</span>
                 </div>
-                
+
                 {!resumeFile ? (
                   <div className="flex items-center justify-center w-full">
                     <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-slate-200 border-dashed rounded-lg cursor-pointer bg-white hover:bg-slate-50 hover:border-blue-300 transition-colors">
@@ -1039,9 +1036,9 @@ export const AIInterviewer: React.FC = () => {
                         <p className="text-[11px] text-slate-500"><span className="font-bold text-blue-600">Click to upload</span> or drag and drop</p>
                         <p className="text-[9px] text-slate-400">PDF (Max. 5MB)</p>
                       </div>
-                      <input 
-                        type="file" 
-                        accept=".pdf" 
+                      <input
+                        type="file"
+                        accept=".pdf"
                         onChange={(e) => {
                           if (e.target.files && e.target.files[0]) {
                             const file = e.target.files[0];
@@ -1052,7 +1049,7 @@ export const AIInterviewer: React.FC = () => {
                             setResumeFile(file);
                           }
                         }}
-                        className="hidden" 
+                        className="hidden"
                       />
                     </label>
                   </div>
@@ -1150,11 +1147,10 @@ export const AIInterviewer: React.FC = () => {
                   </button>
                 </div>
                 {audioTestStatus !== 'idle' && (
-                  <div className={`p-2.5 rounded-lg border text-[11px] font-semibold flex items-center gap-2 ${
-                    audioTestStatus === 'playing' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                    audioTestStatus === 'listening' ? 'bg-emerald-50 text-emerald-700 border-emerald-100 animate-pulse' :
-                    'bg-slate-50 text-slate-700 border-slate-200'
-                  }`}>
+                  <div className={`p-2.5 rounded-lg border text-[11px] font-semibold flex items-center gap-2 ${audioTestStatus === 'playing' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                      audioTestStatus === 'listening' ? 'bg-emerald-50 text-emerald-700 border-emerald-100 animate-pulse' :
+                        'bg-slate-50 text-slate-700 border-slate-200'
+                    }`}>
                     {audioTestStatus === 'listening' && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>}
                     <span>{audioTestResultText}</span>
                   </div>
@@ -1185,7 +1181,7 @@ export const AIInterviewer: React.FC = () => {
 
           {/* Quick-Load JD Templates & Tips */}
           <div className="space-y-6">
-            
+
             {/* Quick Templates Card */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
               <div>
@@ -1300,7 +1296,7 @@ export const AIInterviewer: React.FC = () => {
                 </li>
               </ul>
             </div>
-            
+
           </div>
         </div>
       )}
@@ -1323,12 +1319,12 @@ export const AIInterviewer: React.FC = () => {
               <span className="text-slate-600">|</span>
               <span className="truncate max-w-[150px] md:max-w-[300px]">{position} @ {companyName || 'Corporate Audit'}</span>
             </div>
-            
+
             <div className="flex items-center gap-3">
               <span className="bg-slate-900 border border-slate-800 px-3 py-1 rounded-full text-slate-300 font-bold">
                 Round {roundNumber} of {totalRounds}
               </span>
-              <button 
+              <button
                 onClick={handleExitInterview}
                 className="text-rose-500 hover:text-rose-400 font-bold hover:underline"
               >
@@ -1341,31 +1337,28 @@ export const AIInterviewer: React.FC = () => {
           <div className="flex flex-col items-center justify-center py-6 space-y-4">
             <div className="relative w-36 h-36 flex items-center justify-center">
               {/* Outer pulsing ring 1 */}
-              <div 
-                className={`absolute inset-0 rounded-full transition-all duration-700 opacity-20 ${
-                  isAISpeaking ? 'bg-blue-500 animate-ping-slow' :
-                  isListening ? 'bg-emerald-500 animate-ping-slow' :
-                  isSubmitting ? 'bg-purple-500 animate-ping-slow' :
-                  'bg-slate-700 animate-pulse-slow'
-                }`}
+              <div
+                className={`absolute inset-0 rounded-full transition-all duration-700 opacity-20 ${isAISpeaking ? 'bg-blue-500 animate-ping-slow' :
+                    isListening ? 'bg-emerald-500 animate-ping-slow' :
+                      isSubmitting ? 'bg-purple-500 animate-ping-slow' :
+                        'bg-slate-700 animate-pulse-slow'
+                  }`}
               />
               {/* Outer pulsing ring 2 */}
-              <div 
-                className={`absolute -inset-4 rounded-full transition-all duration-700 opacity-10 ${
-                  isAISpeaking ? 'bg-blue-600 animate-pulse-slow' :
-                  isListening ? 'bg-emerald-600 animate-pulse-slow' :
-                  isSubmitting ? 'bg-purple-600 animate-pulse-slow' :
-                  'bg-slate-800 opacity-0'
-                }`}
+              <div
+                className={`absolute -inset-4 rounded-full transition-all duration-700 opacity-10 ${isAISpeaking ? 'bg-blue-600 animate-pulse-slow' :
+                    isListening ? 'bg-emerald-600 animate-pulse-slow' :
+                      isSubmitting ? 'bg-purple-600 animate-pulse-slow' :
+                        'bg-slate-800 opacity-0'
+                  }`}
               />
               {/* Core visualizer orb */}
-              <div 
-                className={`w-28 h-28 rounded-full flex items-center justify-center text-white border transition-all duration-700 z-10 ${
-                  isAISpeaking ? 'bg-blue-600 border-blue-400 shadow-[0_0_25px_rgba(59,130,246,0.6)] voice-orb-active-blue' :
-                  isListening ? 'bg-emerald-600 border-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.6)] voice-orb-active-green' :
-                  isSubmitting ? 'bg-purple-600 border-purple-400 shadow-[0_0_25px_rgba(139,92,246,0.6)] voice-orb-active-purple' :
-                  'bg-slate-800 border-slate-700 shadow-inner voice-orb-idle'
-                }`}
+              <div
+                className={`w-28 h-28 rounded-full flex items-center justify-center text-white border transition-all duration-700 z-10 ${isAISpeaking ? 'bg-blue-600 border-blue-400 shadow-[0_0_25px_rgba(59,130,246,0.6)] voice-orb-active-blue' :
+                    isListening ? 'bg-emerald-600 border-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.6)] voice-orb-active-green' :
+                      isSubmitting ? 'bg-purple-600 border-purple-400 shadow-[0_0_25px_rgba(139,92,246,0.6)] voice-orb-active-purple' :
+                        'bg-slate-800 border-slate-700 shadow-inner voice-orb-idle'
+                  }`}
               >
                 {isAISpeaking && <AudioLines className="w-10 h-10 animate-pulse text-blue-100" />}
                 {isListening && <Mic className="w-10 h-10 animate-bounce-slow text-emerald-100" />}
@@ -1373,19 +1366,18 @@ export const AIInterviewer: React.FC = () => {
                 {!isAISpeaking && !isListening && !isSubmitting && <MicOff className="w-10 h-10 text-slate-400" />}
               </div>
             </div>
-            
+
             {/* Status labels */}
             <div className="text-center space-y-1 flex flex-col items-center gap-2">
-              <span className={`text-[10px] tracking-widest font-black uppercase px-3 py-1 rounded-full border ${
-                isAISpeaking ? 'text-blue-400 bg-blue-950/40 border-blue-900/30' :
-                isListening ? 'text-emerald-400 bg-emerald-950/40 border-emerald-900/30 animate-pulse' :
-                isSubmitting ? 'text-purple-400 bg-purple-950/40 border-purple-900/30' :
-                'text-slate-400 bg-slate-900/40 border-slate-800/30'
-              }`}>
+              <span className={`text-[10px] tracking-widest font-black uppercase px-3 py-1 rounded-full border ${isAISpeaking ? 'text-blue-400 bg-blue-950/40 border-blue-900/30' :
+                  isListening ? 'text-emerald-400 bg-emerald-950/40 border-emerald-900/30 animate-pulse' :
+                    isSubmitting ? 'text-purple-400 bg-purple-950/40 border-purple-900/30' :
+                      'text-slate-400 bg-slate-900/40 border-slate-800/30'
+                }`}>
                 {isAISpeaking ? 'Interviewer Speaking' :
-                 isListening ? 'Microphone Active' :
-                 isSubmitting ? 'AI Core Processing' :
-                 'System Idle'}
+                  isListening ? 'Microphone Active' :
+                    isSubmitting ? 'AI Core Processing' :
+                      'System Idle'}
               </span>
               {isAISpeaking && (
                 <button
@@ -1413,17 +1405,17 @@ export const AIInterviewer: React.FC = () => {
             <div className="flex-1 text-left">
               <span className="text-[9px] uppercase tracking-widest font-black text-slate-500">Candidate Guide Tip</span>
               <p className="text-slate-300 text-xs mt-0.5 font-medium">
-                {isAISpeaking ? "Listen closely to the question and focus on the technical details." : 
-                 isListening ? "Speak clearly. Explain concepts thoroughly with STAR (Situation, Task, Action, Result) method!" : 
-                 isSubmitting ? "The AI is evaluating key terminology and accuracy of your response." : 
-                 "Enable your microphone and prepare to explain technical fundamentals."}
+                {isAISpeaking ? "Listen closely to the question and focus on the technical details." :
+                  isListening ? "Speak clearly. Explain concepts thoroughly with STAR (Situation, Task, Action, Result) method!" :
+                    isSubmitting ? "The AI is evaluating key terminology and accuracy of your response." :
+                      "Enable your microphone and prepare to explain technical fundamentals."}
               </p>
             </div>
           </div>
 
           {/* CANDIDATE TRANSCRIPT / INPUT PANEL */}
           <div className="w-full max-w-3xl space-y-4">
-            
+
             {cloudVoiceEnabled && !isTypingMode ? (
               /* VOCAL RECORDING PANEL (Whisper & TTS mode) */
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 min-h-[180px] flex flex-col items-center justify-center relative">
@@ -1434,7 +1426,7 @@ export const AIInterviewer: React.FC = () => {
                       <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
                       Recording Response
                     </span>
-                    
+
                     {/* SVG Waveform Animation */}
                     <div className="flex items-end justify-center gap-1.5 h-12 w-full">
                       <div className="w-1 bg-rose-500 rounded-full animate-user-wave animate-duration-[1000ms]" style={{ height: '24px', animationDelay: '0.1s' }}></div>
@@ -1516,20 +1508,19 @@ export const AIInterviewer: React.FC = () => {
                         <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">
                           Audio Recorded Successfully
                         </span>
-                        
+
                         <div className="flex items-center gap-3">
                           <button
                             onClick={playReviewFlow}
-                            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition border ${
-                              isReviewPlaying
+                            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition border ${isReviewPlaying
                                 ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-500 shadow'
                                 : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                            }`}
+                              }`}
                           >
                             {isReviewPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
                             <span>{isReviewPlaying ? 'Pause Review' : 'Play Review'}</span>
                           </button>
-                          
+
                           <button
                             onClick={discardRecording}
                             className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition border border-slate-700"
@@ -1575,7 +1566,7 @@ export const AIInterviewer: React.FC = () => {
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
                       Live Speech-to-Text
                     </span>
-                    
+
                     {spokenAnswer ? (
                       <p className="text-slate-200 text-sm italic pr-12 font-medium">
                         "{spokenAnswer}"
@@ -1607,7 +1598,7 @@ export const AIInterviewer: React.FC = () => {
 
             {/* CONTROLS BAR */}
             <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-900 pt-4">
-              
+
               <div className="flex items-center gap-2">
                 {/* Listening Toggle */}
                 {!isTypingMode && !cloudVoiceEnabled && (
@@ -1679,7 +1670,7 @@ export const AIInterviewer: React.FC = () => {
 
               {/* Mode Swapper & Submitter */}
               <div className="flex items-center gap-2">
-                
+
                 {/* Swap keyboard vs speech */}
                 <button
                   onClick={() => {
@@ -1748,8 +1739,8 @@ export const AIInterviewer: React.FC = () => {
                 {transcript.map((item, idx) => {
                   const isUser = item.role === 'candidate';
                   return (
-                    <div 
-                      key={idx} 
+                    <div
+                      key={idx}
                       className={`flex flex-col space-y-1 ${isUser ? 'items-end' : 'items-start'}`}
                     >
                       <span className="text-[9px] text-slate-500 font-semibold px-1">
@@ -1774,13 +1765,13 @@ export const AIInterviewer: React.FC = () => {
       {/* ---------------------------------------------------- */}
       {activeScreen === 'evaluation' && evaluation && (
         <div className="space-y-6 animate-fade-in">
-          
+
           {/* Main Scorecard Panel */}
           <div className="bg-white rounded-3xl border border-slate-200 shadow-md p-6 md:p-8 space-y-6">
-            
+
             {/* Top Score Summary block */}
             <div className="flex flex-col md:flex-row items-center justify-between gap-6 border-b border-slate-100 pb-6">
-              
+
               <div className="space-y-2 text-center md:text-left">
                 <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">Evaluation Audit Complete</span>
                 <h2 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">AI Interview Scorecard</h2>
@@ -1789,7 +1780,7 @@ export const AIInterviewer: React.FC = () => {
 
               {/* Big Score Gauge */}
               <div className="flex items-center gap-6">
-                
+
                 {/* Circle Score representation */}
                 <div className={`w-24 h-24 rounded-full border-4 flex flex-col items-center justify-center font-black ${getScoreColorClass(evaluation.overallScore)}`}>
                   <span className="text-3xl leading-none">{evaluation.overallScore}</span>
@@ -1828,7 +1819,7 @@ export const AIInterviewer: React.FC = () => {
 
             {/* Strengths & Weaknesses Grids */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-              
+
               {/* Strengths */}
               <div className="border border-slate-200/80 rounded-2xl p-5 space-y-3 bg-emerald-50/10">
                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
@@ -1872,12 +1863,12 @@ export const AIInterviewer: React.FC = () => {
             {/* ACCORDION TRANSCRIPT & RATING DETAILED AUDIT */}
             <div className="space-y-4 pt-4 border-t border-slate-100">
               <h3 className="text-sm font-bold text-slate-900">Question-by-Question Detailed Assessment</h3>
-              
+
               <div className="space-y-3">
                 {evaluation.questionsAnalysis.map((analysis, index) => {
                   const isOpen = openAnalysisIndex === index;
                   return (
-                    <div 
+                    <div
                       key={index}
                       className="border border-slate-200 rounded-2xl overflow-hidden transition-all duration-200"
                     >
@@ -1906,14 +1897,14 @@ export const AIInterviewer: React.FC = () => {
                       {/* Detailed collapse info */}
                       {isOpen && (
                         <div className="p-5 space-y-4 bg-white border-t border-slate-100 text-xs">
-                          
+
                           {/* Question and Answer */}
                           <div className="space-y-2">
                             <div>
                               <p className="font-bold text-slate-500 uppercase text-[9px] tracking-wider">Interviewer's Question</p>
                               <p className="text-slate-800 font-semibold mt-0.5">{analysis.question}</p>
                             </div>
-                            
+
                             <div className="pt-1.5">
                               <p className="font-bold text-slate-500 uppercase text-[9px] tracking-wider">Your Spoken Answer</p>
                               <p className="text-slate-700 italic mt-0.5">"{analysis.candidateAnswer}"</p>
@@ -1991,65 +1982,117 @@ export const AIInterviewer: React.FC = () => {
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="py-3 px-4">Job Role / Position</th>
-                    <th className="py-3 px-4">Interviewer Type</th>
-                    <th className="py-3 px-4">Audit Date</th>
-                    <th className="py-3 px-4 text-center">Score</th>
-                    <th className="py-3 px-4">Verdict</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                  {historyList.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50/50 transition">
-                      <td className="py-4 px-4 font-bold text-slate-800">
-                        {item.position}
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      <th className="py-3 px-4">Job Role / Position</th>
+                      <th className="py-3 px-4">Interviewer Type</th>
+                      <th className="py-3 px-4">Audit Date</th>
+                      <th className="py-3 px-4 text-center">Score</th>
+                      <th className="py-3 px-4">Verdict</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                    {historyList.map((item) => (
+                      <tr key={item.id} className="hover:bg-slate-50/50 transition">
+                        <td className="py-4 px-4 font-bold text-slate-800">
+                          {item.position}
+                          {item.companyName && (
+                            <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">
+                              @{item.companyName}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-4 px-4 text-slate-500">{item.personality}</td>
+                        <td className="py-4 px-4 text-slate-400 flex items-center gap-1 mt-1.5">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {new Date(item.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          {typeof item.overallScore === 'number' ? (
+                            <span className={`px-2 py-0.5 font-bold border rounded-full ${getScoreColorClass(item.overallScore)}`}>
+                              {item.overallScore}/100
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic text-[11px]">Incomplete</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-4">
+                          {item.verdict ? (
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 border rounded-full font-bold text-[10px] ${item.verdict === 'SELECTED' ? 'text-emerald-700 bg-emerald-50 border-emerald-100' : 'text-rose-700 bg-rose-50 border-rose-100'}`}>
+                              {item.verdict}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
+                        <td className="py-4 px-4 text-right">
+                          <button
+                            onClick={() => handleViewDetailedReport(item.id)}
+                            className="bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border border-slate-200 hover:border-blue-200 font-bold px-3 py-1.5 rounded-lg transition"
+                          >
+                            View Report
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="space-y-4 md:hidden">
+                {historyList.map((item) => (
+                  <div key={item.id} className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-sm">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-bold text-slate-800 text-sm">{item.position}</h4>
                         {item.companyName && (
-                          <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">
+                          <span className="text-[10px] text-slate-400 font-semibold block">
                             @{item.companyName}
                           </span>
                         )}
-                      </td>
-                      <td className="py-4 px-4 text-slate-500">{item.personality}</td>
-                      <td className="py-4 px-4 text-slate-400 flex items-center gap-1 mt-1.5">
+                      </div>
+                      {typeof item.overallScore === 'number' ? (
+                        <span className={`px-2 py-0.5 font-bold border rounded-full text-xs ${getScoreColorClass(item.overallScore)}`}>
+                          {item.overallScore}/100
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 italic text-[10px]">Incomplete</span>
+                      )}
+                    </div>
+                    
+                    <div className="flex justify-between items-center text-xs text-slate-500 pt-1">
+                      <span>{item.personality}</span>
+                      <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5" />
                         {new Date(item.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        {typeof item.overallScore === 'number' ? (
-                          <span className={`px-2 py-0.5 font-bold border rounded-full ${getScoreColorClass(item.overallScore)}`}>
-                            {item.overallScore}/100
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 italic text-[11px]">Incomplete</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-4">
-                        {item.verdict ? (
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 border rounded-full font-bold text-[10px] ${item.verdict === 'SELECTED' ? 'text-emerald-700 bg-emerald-50 border-emerald-100' : 'text-rose-700 bg-rose-50 border-rose-100'}`}>
-                            {item.verdict}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">-</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-4 text-right">
-                        <button
-                          onClick={() => handleViewDetailedReport(item.id)}
-                          className="bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border border-slate-200 hover:border-blue-200 font-bold px-3 py-1.5 rounded-lg transition"
-                        >
-                          View Report
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                      {item.verdict ? (
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 border rounded-full font-bold text-[9px] ${item.verdict === 'SELECTED' ? 'text-emerald-700 bg-emerald-50 border-emerald-100' : 'text-rose-700 bg-rose-50 border-rose-100'}`}>
+                          {item.verdict}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
+                      <button
+                        onClick={() => handleViewDetailedReport(item.id)}
+                        className="bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border border-slate-200 hover:border-blue-200 font-bold px-3 py-1.5 rounded-lg transition"
+                      >
+                        View Report
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -2077,10 +2120,10 @@ export const AIInterviewer: React.FC = () => {
             <div className="space-y-6 animate-fade-in">
               {/* Detailed view scorecard */}
               <div className="bg-white rounded-3xl border border-slate-200 shadow-md p-6 md:p-8 space-y-6">
-                
+
                 {/* Header detail info */}
                 <div className="flex flex-col md:flex-row items-center justify-between gap-6 border-b border-slate-100 pb-6">
-                  
+
                   <div className="space-y-2 text-center md:text-left">
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
                       <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full uppercase">Report Archive</span>
@@ -2101,7 +2144,7 @@ export const AIInterviewer: React.FC = () => {
 
                   {/* Circular Score Gauge */}
                   <div className="flex items-center gap-6">
-                    
+
                     <div className={`w-24 h-24 rounded-full border-4 flex flex-col items-center justify-center font-black ${getScoreColorClass(detailedReport.evaluation.overallScore)}`}>
                       <span className="text-3xl leading-none">{detailedReport.evaluation.overallScore}</span>
                       <span className="text-[10px] font-bold text-slate-400 mt-0.5">/ 100</span>
@@ -2128,7 +2171,7 @@ export const AIInterviewer: React.FC = () => {
 
                 {/* Strengths & Weaknesses */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  
+
                   <div className="border border-slate-200/80 rounded-2xl p-5 space-y-3 bg-emerald-50/10">
                     <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
                       <CheckCircle2 className="w-4 h-4 text-emerald-500" />
@@ -2164,12 +2207,12 @@ export const AIInterviewer: React.FC = () => {
                 {/* Detailed Q&A Accordion */}
                 <div className="space-y-4 pt-4 border-t border-slate-100">
                   <h3 className="text-sm font-bold text-slate-900">Q&A Audit Transcript Breakdown</h3>
-                  
+
                   <div className="space-y-3">
                     {detailedReport.evaluation.questionsAnalysis.map((analysis: any, index: number) => {
                       const isOpen = openAnalysisIndex === index;
                       return (
-                        <div 
+                        <div
                           key={index}
                           className="border border-slate-200 rounded-2xl overflow-hidden transition-all duration-200"
                         >
@@ -2196,13 +2239,13 @@ export const AIInterviewer: React.FC = () => {
 
                           {isOpen && (
                             <div className="p-5 space-y-4 bg-white border-t border-slate-100 text-xs">
-                              
+
                               <div className="space-y-2">
                                 <div>
                                   <p className="font-bold text-slate-500 uppercase text-[9px] tracking-wider">Interviewer's Question</p>
                                   <p className="text-slate-800 font-semibold mt-0.5">{analysis.question}</p>
                                 </div>
-                                
+
                                 <div className="pt-1.5">
                                   <p className="font-bold text-slate-500 uppercase text-[9px] tracking-wider">Your Recorded Answer</p>
                                   <p className="text-slate-700 italic mt-0.5">"{analysis.candidateAnswer}"</p>

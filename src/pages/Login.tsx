@@ -48,9 +48,9 @@ export const Login: React.FC = () => {
           <div className="w-12 h-12 rounded-lg bg-blue-600 flex items-center justify-center text-white mb-3 shadow-md">
             <BookOpen className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">IIP</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">InPrep</h1>
           <p className="text-slate-500 text-sm text-center mt-1">
-            Interview Intelligence Platform
+            Interview Preparation Platform
           </p>
         </div>
 

@@ -23,7 +23,7 @@ export const packsApi = createApi({
     }),
     getPackDetail: builder.query({
       query: (packId) => `/packs/${packId}`,
-      providesTags: (result, error, arg) => [{ type: 'Packs', id: arg }],
+      providesTags: (_result, _error, arg) => [{ type: 'Packs', id: arg }],
     }),
     startPackSession: builder.mutation({
       query: (packId) => ({

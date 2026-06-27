@@ -286,14 +286,14 @@ export const Questions: React.FC = () => {
     <div className="space-y-6">
       
       {/* Header controls */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Question Bank</h1>
           <p className="text-slate-500 text-sm">Every interview question becomes training data for your next round.</p>
         </div>
         <button
           onClick={() => { resetForm(); setShowAddModal(true); }}
-          className="flex items-center gap-2 px-4 py-2 bg-black hover:bg-slate-900 text-white rounded-md text-sm font-semibold transition shadow-sm"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-black hover:bg-slate-900 text-white rounded-md text-sm font-semibold transition shadow-sm w-full sm:w-auto"
         >
           <Plus className="w-4 h-4" /> Log Question
         </button>
@@ -348,7 +348,7 @@ export const Questions: React.FC = () => {
       </div>
 
       {/* Dynamic View Modes Selector */}
-      <div className="flex bg-slate-100 p-1 rounded-xl w-fit">
+      <div className="flex flex-wrap bg-slate-100 p-1 rounded-xl w-fit gap-1">
         <button
           onClick={() => setViewMode('skills')}
           className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
@@ -622,7 +622,7 @@ export const Questions: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Difficulty</label>
                   <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}
@@ -644,7 +644,7 @@ export const Questions: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Recall Strength (1-10)</label>
                   <select value={confidenceLevel} onChange={(e) => setConfidenceLevel(e.target.value)}
@@ -729,7 +729,7 @@ export const Questions: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Difficulty</label>
                   <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}
@@ -751,7 +751,7 @@ export const Questions: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Recall Strength (1-10)</label>
                   <select value={confidenceLevel} onChange={(e) => setConfidenceLevel(e.target.value)}

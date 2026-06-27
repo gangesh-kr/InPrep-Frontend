@@ -17,7 +17,9 @@ import {
   User, 
   AlertCircle,
   FileText,
-  Clock
+  Clock,
+  CheckCircle,
+  History
 } from 'lucide-react';
 
 export const InterviewHistory: React.FC<{ onViewScorecard?: (sessionId: string) => void }> = ({ onViewScorecard }) => {

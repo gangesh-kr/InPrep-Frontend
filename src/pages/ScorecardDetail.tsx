@@ -19,7 +19,6 @@ import {
   Loader2, 
   Printer, 
   Share2, 
-  Link, 
   Copy, 
   Check, 
   ChevronLeft, 
@@ -27,12 +26,8 @@ import {
   CheckCircle2, 
   Shield, 
   ShieldAlert,
-  ArrowRight,
   TrendingUp,
   Award,
-  Clock,
-  Calendar,
-  Lock,
   Globe
 } from 'lucide-react';
 
@@ -363,10 +358,10 @@ export const ScorecardDetail: React.FC<ScorecardDetailProps> = ({
         <div className="hidden print:flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white font-extrabold text-sm">
-              I
+              In
             </div>
             <div>
-              <span className="font-extrabold text-slate-900 tracking-tight text-sm">Interview Intelligence Platform</span>
+              <span className="font-extrabold text-slate-900 tracking-tight text-sm">InPrep - Interview Preparation Platform</span>
               <p className="text-[9px] text-slate-400">Recruiter-ready Candidate Report</p>
             </div>
           </div>

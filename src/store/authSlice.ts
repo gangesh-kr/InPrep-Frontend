@@ -8,8 +8,9 @@ export interface AuthState {
   isAuthenticated: boolean;
 }
 
-const storedToken = localStorage.getItem('inprep_token');
-const storedUser = localStorage.getItem('inprep_user');
+const isClient = typeof window !== 'undefined';
+const storedToken = isClient ? localStorage.getItem('inprep_token') : null;
+const storedUser = isClient ? localStorage.getItem('inprep_user') : null;
 
 const initialState: AuthState = {
   user: storedUser ? JSON.parse(storedUser) : null,

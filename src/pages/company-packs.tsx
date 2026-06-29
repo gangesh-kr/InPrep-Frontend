@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useRouter } from 'next/router';
 import { 
   useGetPacksQuery, 
   usePurchasePackMutation 
@@ -16,7 +17,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-export const CompanyPacks: React.FC<{ setActiveTab: (tab: string) => void }> = ({ setActiveTab }) => {
+export const CompanyPacks: React.FC = () => {
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [difficulty, setDifficulty] = useState('');
   const [interviewType, setInterviewType] = useState('');
@@ -40,7 +42,7 @@ export const CompanyPacks: React.FC<{ setActiveTab: (tab: string) => void }> = (
       })
     );
     setSelectedPack(null);
-    setActiveTab('ai-interviewer');
+    router.push('/ai-interviewer');
   };
 
   const handlePurchase = async (packId: string) => {

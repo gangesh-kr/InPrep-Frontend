@@ -240,3 +240,5 @@ export const Revision: React.FC = () => {
     </div>
   );
 };
+
+export default Revision;

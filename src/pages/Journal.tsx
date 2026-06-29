@@ -248,3 +248,5 @@ export const Journal: React.FC = () => {
     </div>
   );
 };
+
+export default Journal;

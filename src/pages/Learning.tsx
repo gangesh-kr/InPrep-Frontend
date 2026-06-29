@@ -389,3 +389,5 @@ export const Learning: React.FC = () => {
     </div>
   );
 };
+
+export default Learning;

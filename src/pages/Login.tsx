@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
-import { useAppDispatch } from '../store';
+import React, { useState, useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '../store';
 import { login } from '../store/authSlice';
 import { apiRequest } from '../utils/api';
 import { BookOpen, Lock, Mail, User } from 'lucide-react';
+import { useRouter } from 'next/router';
 
 export const Login: React.FC = () => {
+  const router = useRouter();
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -13,6 +16,12 @@ export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   
   const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push('/');
+    }
+  }, [isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,3 +142,5 @@ export const Login: React.FC = () => {
     </div>
   );
 };
+
+export default Login;

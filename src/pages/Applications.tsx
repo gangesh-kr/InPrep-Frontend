@@ -546,3 +546,5 @@ export const Applications: React.FC = () => {
     </div>
   );
 };
+
+export default Applications;

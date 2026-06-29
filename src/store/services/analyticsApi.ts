@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type { RootState } from '../index';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 export const analyticsApi = createApi({
   reducerPath: 'analyticsApi',
@@ -15,7 +15,7 @@ export const analyticsApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ['Analytics'],
+  tagTypes: ['Analytics', 'LearningPlan', 'Packs'],
   endpoints: (builder) => ({
     getTrends: builder.query({
       query: (params) => ({
@@ -32,6 +32,10 @@ export const analyticsApi = createApi({
       query: () => '/analytics/activity',
       providesTags: ['Analytics'],
     }),
+    getDashboardFeed: builder.query({
+      query: () => '/analytics/dashboard-feed',
+      providesTags: ['Analytics', 'LearningPlan', 'Packs'],
+    }),
   }),
 });
 
@@ -39,5 +43,6 @@ export const {
   useGetTrendsQuery,
   useGetScoreBreakdownQuery,
   useGetActivityQuery,
+  useGetDashboardFeedQuery,
 } = analyticsApi;
 export default analyticsApi;

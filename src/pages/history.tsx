@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useRouter } from 'next/router';
 import { 
   useGetHistoryQuery, 
   useGetHistoryDetailsQuery, 
@@ -22,7 +23,8 @@ import {
   History
 } from 'lucide-react';
 
-export const InterviewHistory: React.FC<{ onViewScorecard?: (sessionId: string) => void }> = ({ onViewScorecard }) => {
+export const InterviewHistory: React.FC = () => {
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const [interviewType, setInterviewType] = useState<string>('');
   const [minScore, setMinScore] = useState<string>('');
@@ -232,9 +234,9 @@ export const InterviewHistory: React.FC<{ onViewScorecard?: (sessionId: string) 
                     </div>
 
                     <div className="flex gap-2">
-                      {item.overallScore !== null && onViewScorecard && (
+                      {item.overallScore !== null && (
                         <button
-                          onClick={() => onViewScorecard(item.id)}
+                          onClick={() => router.push(`/ScorecardDetail?sessionId=${item.id}`)}
                           className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold transition min-h-[44px] flex items-center"
                         >
                           View Scorecard

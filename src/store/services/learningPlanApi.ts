@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type { RootState } from '../index';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 export const learningPlanApi = createApi({
   reducerPath: 'learningPlanApi',
@@ -35,6 +35,7 @@ export const learningPlanApi = createApi({
         method: 'PATCH',
         body,
       }),
+      invalidatesTags: ['LearningPlan'],
       async onQueryStarted({ weekNumber, dayOfWeek, taskIndex }, { dispatch, queryFulfilled }) {
         const patchResult = dispatch(
           learningPlanApi.util.updateQueryData('getPlan', undefined, (draft: any) => {
@@ -66,6 +67,30 @@ export const learningPlanApi = createApi({
       }),
       invalidatesTags: ['LearningPlan'],
     }),
+    addTask: builder.mutation({
+      query: (body) => ({
+        url: '/learning-plan/task',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['LearningPlan'],
+    }),
+    editTask: builder.mutation({
+      query: (body) => ({
+        url: '/learning-plan/task',
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['LearningPlan'],
+    }),
+    deleteTask: builder.mutation({
+      query: (body) => ({
+        url: '/learning-plan/task',
+        method: 'DELETE',
+        body,
+      }),
+      invalidatesTags: ['LearningPlan'],
+    }),
   }),
 });
 
@@ -74,5 +99,8 @@ export const {
   useGeneratePlanMutation,
   useToggleTaskMutation,
   useRegeneratePlanMutation,
+  useAddTaskMutation,
+  useEditTaskMutation,
+  useDeleteTaskMutation,
 } = learningPlanApi;
 export default learningPlanApi;

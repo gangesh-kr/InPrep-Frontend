@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { 
   useGetWeaknessProfileQuery, 
   useRefreshWeaknessProfileMutation 
@@ -22,7 +23,8 @@ import {
   Cpu
 } from 'lucide-react';
 
-export const WeaknessAnalysis: React.FC<{ setActiveTab?: (tab: string) => void }> = ({ setActiveTab }) => {
+export const WeaknessAnalysis: React.FC = () => {
+  const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
   const userId = user?.id || '';
 
@@ -72,7 +74,6 @@ export const WeaknessAnalysis: React.FC<{ setActiveTab?: (tab: string) => void }
     if (cooldownSeconds === 0 && !isRefreshing) {
       try {
         await refreshProfile({}).unwrap();
-        refetch();
       } catch (err) {
         console.error('Failed to refresh weakness profile:', err);
       }
@@ -132,7 +133,7 @@ export const WeaknessAnalysis: React.FC<{ setActiveTab?: (tab: string) => void }
         </div>
 
         <button
-          onClick={() => setActiveTab && setActiveTab('ai-interviewer')}
+          onClick={() => router.push('/ai-interviewer')}
           className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-md min-h-[44px]"
         >
           Complete Mock Interview

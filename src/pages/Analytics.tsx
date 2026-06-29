@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { 
   useGetTrendsQuery, 
   useGetScoreBreakdownQuery, 
@@ -29,7 +30,8 @@ import {
   AlertCircle 
 } from 'lucide-react';
 
-export const Analytics: React.FC<{ setActiveTab?: (tab: string) => void }> = ({ setActiveTab }) => {
+export const Analytics: React.FC = () => {
+  const router = useRouter();
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
   
   const { data: trendsData, isLoading: trendsLoading, error: trendsError } = useGetTrendsQuery({ timeframe });
@@ -99,7 +101,7 @@ export const Analytics: React.FC<{ setActiveTab?: (tab: string) => void }> = ({ 
           Complete at least one mock interview session to unlock your improvement analytics, score trends, and weakness profiling.
         </p>
         <button
-          onClick={() => setActiveTab && setActiveTab('ai-interviewer')}
+          onClick={() => router.push('/ai-interviewer')}
           className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow"
         >
           <Play className="w-4 h-4 fill-current" />

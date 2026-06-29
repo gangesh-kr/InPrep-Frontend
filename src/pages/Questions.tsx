@@ -794,3 +794,5 @@ export const Questions: React.FC = () => {
     </div>
   );
 };
+
+export default Questions;

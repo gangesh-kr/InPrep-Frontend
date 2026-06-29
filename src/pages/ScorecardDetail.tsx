@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { 
   useGenerateScorecardMutation,
   useShareScorecardMutation,
@@ -44,8 +45,17 @@ export const ScorecardDetail: React.FC<ScorecardDetailProps> = ({
   isPublicView = false,
   setActiveTab
 }) => {
+  const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
   
+  // Resolve from props or query params
+  const querySessionId = router.query.sessionId as string;
+  const queryPublicToken = router.query.publicToken as string;
+  
+  const resolvedSessionId = sessionId || querySessionId;
+  const resolvedPublicToken = publicToken || queryPublicToken;
+  const resolvedIsPublicView = isPublicView || !!resolvedPublicToken || router.pathname.startsWith('/scorecard/');
+
   // States
   const [showShareModal, setShowShareModal] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -57,8 +67,8 @@ export const ScorecardDetail: React.FC<ScorecardDetailProps> = ({
     data: publicData, 
     isLoading: isPublicLoading, 
     error: publicError 
-  } = useGetPublicScorecardQuery(publicToken || '', {
-    skip: !isPublicView || !publicToken
+  } = useGetPublicScorecardQuery(resolvedPublicToken || '', {
+    skip: !resolvedIsPublicView || !resolvedPublicToken
   });
 
   // 2. Authenticated view: fetch session details
@@ -66,8 +76,8 @@ export const ScorecardDetail: React.FC<ScorecardDetailProps> = ({
     data: sessionDetails, 
     isLoading: isSessionLoading, 
     error: sessionError 
-  } = useGetHistoryDetailsQuery(sessionId || '', {
-    skip: isPublicView || !sessionId
+  } = useGetHistoryDetailsQuery(resolvedSessionId || '', {
+    skip: resolvedIsPublicView || !resolvedSessionId
   });
 
   // 3. Authenticated view: generate or fetch scorecard data
@@ -77,18 +87,18 @@ export const ScorecardDetail: React.FC<ScorecardDetailProps> = ({
 
   // Run generation on load in authenticated view
   useEffect(() => {
-    if (!isPublicView && sessionId) {
-      generateScorecard({ sessionId });
+    if (!resolvedIsPublicView && resolvedSessionId) {
+      generateScorecard({ sessionId: resolvedSessionId });
     }
-  }, [sessionId, isPublicView]);
+  }, [resolvedSessionId, resolvedIsPublicView]);
 
   // Derived state helper
-  const isLoading = isPublicView ? isPublicLoading : (isSessionLoading || isGenerating);
-  const error = isPublicView ? publicError : (sessionError || generateError);
+  const isLoading = resolvedIsPublicView ? isPublicLoading : (isSessionLoading || isGenerating);
+  const error = resolvedIsPublicView ? publicError : (sessionError || generateError);
 
   // Combine data depending on view mode
   const data = React.useMemo(() => {
-    if (isPublicView && publicData) {
+    if (resolvedIsPublicView && publicData) {
       return {
         candidateName: publicData.candidateName,
         position: publicData.position,
@@ -106,7 +116,7 @@ export const ScorecardDetail: React.FC<ScorecardDetailProps> = ({
         publicToken: publicData.publicToken,
         scorecardId: publicData.id
       };
-    } else if (!isPublicView && sessionDetails && generatedScorecard) {
+    } else if (!resolvedIsPublicView && sessionDetails && generatedScorecard) {
       return {
         candidateName: user?.fullName || 'Candidate',
         position: sessionDetails.position,
@@ -126,7 +136,7 @@ export const ScorecardDetail: React.FC<ScorecardDetailProps> = ({
       };
     }
     return null;
-  }, [isPublicView, publicData, sessionDetails, generatedScorecard, user]);
+  }, [resolvedIsPublicView, publicData, sessionDetails, generatedScorecard, user]);
 
   // Copy share link handler
   const handleCopyLink = () => {
@@ -191,15 +201,13 @@ export const ScorecardDetail: React.FC<ScorecardDetailProps> = ({
             </p>
           </div>
         </div>
-        {setActiveTab && (
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className="flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 pt-2"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span>Go Back to Dashboard</span>
-          </button>
-        )}
+        <button
+          onClick={() => router.push('/')}
+          className="flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 pt-2"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span>Go Back to Dashboard</span>
+        </button>
       </div>
     );
   }
@@ -290,15 +298,13 @@ export const ScorecardDetail: React.FC<ScorecardDetailProps> = ({
       {/* Action Header bar */}
       <div className="no-print flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-4">
         <div className="flex items-center gap-2">
-          {setActiveTab && (
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className="p-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-slate-500 hover:text-slate-800 transition min-h-[44px]"
-              title="Back"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-          )}
+          <button
+            onClick={() => router.push('/history')}
+            className="p-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-slate-500 hover:text-slate-800 transition min-h-[44px]"
+            title="Back"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Recruiter Scorecard</h1>
             <p className="text-xs text-slate-500 mt-0.5">Generate, print, and share evaluation reports.</p>

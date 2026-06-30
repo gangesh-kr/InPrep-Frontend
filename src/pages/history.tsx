@@ -236,7 +236,7 @@ export const InterviewHistory: React.FC = () => {
                     <div className="flex gap-2">
                       {item.overallScore !== null && (
                         <button
-                          onClick={() => router.push(`/ScorecardDetail?sessionId=${item.id}`)}
+                          onClick={() => router.push(`/scorecard-detail?sessionId=${item.id}`)}
                           className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold transition min-h-[44px] flex items-center"
                         >
                           View Scorecard
